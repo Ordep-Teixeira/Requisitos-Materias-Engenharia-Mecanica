@@ -1,0 +1,823 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Grade com Hierarquia de Pré-requisitos</title>
+   <style>
+    /* Mantendo o estilo anterior e adicionando novos */
+     /* Define a fonte e espaçamento da página */
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        overflow-x: auto; /* Permite rolagem horizontal se necessário */
+    }
+
+
+    /* Define um container com largura mínima para evitar que os elementos fiquem apertados */
+    .container {
+        min-width: 1200px;
+    }
+
+
+    /* Layout da grade para organizar os semestres */
+    .semestre-grid {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr); /* Cria 10 colunas de tamanho igual */
+        gap: 5px; /* Espaçamento entre os elementos */
+        margin-top: 20px;
+    }
+
+
+    /* Estilização do cabeçalho de cada semestre */
+    .semestre-header {
+        background-color: #3498db; /* Azul */
+        color: white;
+        padding: 10px;
+        text-align: center;
+        font-weight: bold;
+    }
+
+
+    /* Estilização das disciplinas */
+    .disciplina {
+        background-color: #f8f9fa; /* Cor clara */
+        border: 1px solid #dee2e6;
+        padding: 12px;
+        margin: 2px;
+        cursor: pointer; /* Indica que o elemento pode ser clicado */
+        position: relative;
+        min-height: 80px; /* Garante altura mínima */
+        transition: all 0.2s; /* Suaviza mudanças visuais */
+    }
+
+
+    /* Destaca disciplinas que são pré-requisitos */
+    .destaque-pre-requisito {
+        background-color: #ffcccc !important; /* Vermelho claro */
+        border: 2px solid #ff0000 !important; /* Borda vermelha */
+    }
+
+
+    /* Destaca disciplinas que são pré-requisitos de pré-requisitos */
+    .destaque-pre-pre-requisito {
+        background-color: #fff3cc !important; /* Amarelo claro */
+        border: 2px solid #ffd700 !important; /* Amarelo ouro */
+    }
+    
+    /* Estilização para disciplinas concluídas (exceto pré-requisitos) */
+    .disciplina.concluida:not(.destaque-pre-requisito):not(.destaque-pre-pre-requisito) {
+        background-color: #d4edda !important; /* Verde claro */
+        border-color: #c3e6cb !important;
+    }
+
+
+    /* Destaca a disciplina selecionada */
+    .destaque-selecionada {
+        background-color: #3498db !important; /* Azul */
+        color: white !important;
+        border: 2px solid #1c6ea4 !important;
+    }
+
+
+.legenda {
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+
+
+
+    /* Barra de progresso */
+    .progresso-container {
+        margin: 20px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+
+    /* Fundo da barra de progresso */
+    .progresso-bar {
+        width: 300px;
+        height: 20px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+
+    /* Preenchimento da barra de progresso */
+    .progresso {
+        height: 100%;
+        width: 0%;
+        background-color: #3498db;
+        transition: width 0.3s ease;
+    }
+
+
+    /* Texto da barra de progresso */
+    .progresso-texto {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+
+    /* Ícone ✔ para disciplinas concluídas */
+    .disciplina.concluida::after {
+        content: "✔";
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: #28a745; /* Verde */
+        font-size: 16px;
+        z-index: 1; /* Mantém acima do conteúdo */
+    }
+
+
+    /* Botão para marcar disciplina como concluída */
+    .disciplina .concluir-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 20px;
+        height: 20px;
+        background-color: #f8f9fa;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        z-index: 1; /* Abaixo do ícone de "check" */
+    }
+
+
+    /* Efeito hover no botão de concluir */
+    .disciplina .concluir-btn:hover {
+        background-color: #e9ecef;
+    }
+
+
+    /* Ajuste para o ícone de "check" sobreposto */
+    .disciplina.concluida::after {
+        content: "✔";
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: #28a745;
+        font-size: 24px;
+        z-index: 2; /* Garante que fique acima do botão */
+    }
+    
+    /* Caixa de diálogo para interações */
+    .dialog {
+        display: none; /* Inicialmente oculta */
+        position: absolute;
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000; /* Mantém acima de outros elementos */
+    }
+
+
+    /* Botões dentro da caixa de diálogo */
+    .dialog button {
+        display: block;
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+
+    /* Efeito hover nos botões da caixa de diálogo */
+    .dialog button:hover {
+        background-color: #2980b9;
+    }
+    
+</style>
+</head>
+<body>
+    <div class="container"> <!-- Contêiner principal para agrupar todos os elementos -->
+        <h1>Grade Curricular - Engenharia Mecânica</h1> <!-- Título da página, informando que é a grade curricular de Engenharia Mecânica -->
+        
+        <!-- Caixa de diálogo (modal) -->
+        <div id="dialog" class="dialog"> <!-- A div com id="dialog" representa uma caixa de diálogo modal -->
+            <button id="btn-mostrar-pre-requisitos">Mostrar Pré-requisitos</button> <!-- Botão para mostrar os pré-requisitos das disciplinas -->
+            <button id="btn-marcar-concluida">Marcar como Concluída</button> <!-- Botão para marcar a disciplina como concluída -->
+        </div>
+
+
+        <!-- Barra de progresso -->
+        <div class="progresso-container"> <!-- Contêiner para a barra de progresso -->
+            <div class="progresso-bar"> <!-- A barra de progresso em si -->
+                <div class="progresso"></div> <!-- A parte preenchida da barra de progresso, que pode ser alterada dinamicamente -->
+            </div>
+            <span class="progresso-texto">0% concluído</span> <!-- Texto indicando a porcentagem de conclusão, inicializando com 0% -->
+        </div>
+
+
+        <!-- Legenda -->
+        <div class="legenda"> <!-- Contêiner para a legenda -->
+            <div style="background-color: #ffcccc; padding: 5px; margin: 2px;">Pré-requisito Direto</div> <!-- Legenda para disciplinas que são pré-requisitos diretos -->
+            <div style="background-color: #fff3cc; padding: 5px; margin: 2px;">Pré-pré-requisito</div> <!-- Legenda para disciplinas que são pré-pré-requisitos -->
+            <div style="background-color: #3498db; padding: 5px; margin: 2px; color: white;">Disciplina Selecionada</div> <!-- Legenda para a disciplina selecionada, com cor de fundo azul e texto branco -->
+        </div>
+        
+        <!-- Grade dos Semestres -->
+        <div class="semestre-grid"> <!-- Contêiner para organizar as disciplinas por semestre -->
+            <!-- Cabeçalho dos Semestres -->
+            <div class="semestre-header" id="semestre-1">1º</div>
+            <div class="semestre-header" id="semestre-2">2º</div>
+            <div class="semestre-header" id="semestre-3">3º</div>
+            <div class="semestre-header" id="semestre-4">4º</div>
+            <div class="semestre-header" id="semestre-5">5º</div>
+            <div class="semestre-header" id="semestre-6">6º</div>
+            <div class="semestre-header" id="semestre-7">7º</div>
+            <div class="semestre-header" id="semestre-8">8º</div>
+            <div class="semestre-header" id="semestre-9">9º</div>
+            <div class="semestre-header" id="semestre-10">10º</div>
+            
+   <!-- Disciplinas do 1º Semestre -->
+   <div class="disciplina" data-id="calculo1" style="grid-column: 1; grid-row: 2;"> <!-- Div para representar uma disciplina específica -->
+       <div>Cód: MAT100</div> <!-- Código da disciplina (MAT100) -->
+       <div>Cálculo Diferencial e Integral I</div> <!-- Nome da disciplina: Cálculo Diferencial e Integral I -->
+   </div>
+
+
+    <div class="disciplina" data-id="desenho1" style="grid-column: 1; grid-row: 3;">
+        <div>Cód: MEC101</div>
+        <div>Desenho Mecânico I</div>
+    </div>
+    <div class="disciplina" data-id="fisica1" style="grid-column: 1; grid-row: 4;">
+        <div>Cód: FIS100</div>
+        <div>Física I</div>
+    </div>
+    <div class="disciplina" data-id="praticas" style="grid-column: 1; grid-row: 5;">
+        <div>Cód: MEC102</div>
+        <div>Práticas em Engenharia Mecânica</div>
+    </div>
+    <div class="disciplina" data-id="matrizes" style="grid-column: 1; grid-row: 6;">
+        <div>Cód: MAT101</div>
+        <div>Matrizes e Vetores</div>
+    </div>
+    <div class="disciplina" data-id="quimica" style="grid-column: 1; grid-row: 7;">
+        <div>Cód: QUIM100</div>
+        <div>Química Geral e Experimental</div>
+    </div>
+
+
+    <!-- Disciplinas do 2º Semestre -->
+    <div class="disciplina" data-id="programacao" style="grid-column: 2; grid-row: 2;">
+        <div>Cód: MEC103</div>
+        <div>Programação para Engenharia</div>
+    </div>
+    <div class="disciplina" data-id="calculo2" style="grid-column: 2; grid-row: 3;">
+        <div>Cód: MAT200</div>
+        <div>Cálculo Diferencial e Integral II</div>
+    </div>
+    <div class="disciplina" data-id="desenho2" style="grid-column: 2; grid-row: 4;">
+        <div>Cód: MEC104</div>
+        <div>Desenho Mecânico II</div>
+    </div>
+    <div class="disciplina" data-id="estatica" style="grid-column: 2; grid-row: 5;">
+        <div>Cód: MEC105</div>
+        <div>Estática</div>
+    </div>
+    <div class="disciplina" data-id="fisica_exp" style="grid-column: 2; grid-row: 6;">
+        <div>Cód: FIS101</div>
+        <div>Física Experimental e Metodologia da Pesquisa</div>
+    </div>
+    <div class="disciplina" data-id="probabilidade" style="grid-column: 2; grid-row: 7;">
+        <div>Cód: MAT201</div>
+        <div>Probabilidade e Estatística</div>
+    </div>
+
+
+    <!-- Disciplinas do 3º Semestre -->
+    <div class="disciplina" data-id="calculo3" style="grid-column: 3; grid-row: 2;">
+        <div>Cód: MAT300</div>
+        <div>Cálculo Diferencial e Integral III</div>
+    </div>
+    <div class="disciplina" data-id="dinamica" style="grid-column: 3; grid-row: 3;">
+        <div>Cód: MEC106</div>
+        <div>Dinâmica</div>
+    </div>
+    <div class="disciplina" data-id="economia" style="grid-column: 3; grid-row: 4;">
+        <div>Cód: ADM100</div>
+        <div>Introdução a Economia</div>
+    </div>
+    <div class="disciplina" data-id="fisica3" style="grid-column: 3; grid-row: 5;">
+        <div>Cód: FIS300</div>
+        <div>Física III</div>
+    </div>
+    <div class="disciplina" data-id="gestao" style="grid-column: 3; grid-row: 6;">
+        <div>Cód: ADM101</div>
+        <div>Noções de Gestão Empresarial</div>
+    </div>
+    <div class="disciplina" data-id="metrologia" style="grid-column: 3; grid-row: 7;">
+        <div>Cód: MEC107</div>
+        <div>Metrologia</div>
+    </div>
+
+
+    <!-- Disciplinas do 4º Semestre -->
+    <div class="disciplina" data-id="eletrotecnica" style="grid-column: 4; grid-row: 2;">
+        <div>Cód: MEC108</div>
+        <div>Eletrotécnica Geral</div>
+    </div>
+    <div class="disciplina" data-id="calculo_numerico" style="grid-column: 4; grid-row: 3;">
+        <div>Cód: MAT400</div>
+        <div>Cálculo Numérico</div>
+    </div>
+    <div class="disciplina" data-id="ciencia_materiais" style="grid-column: 4; grid-row: 4;">
+        <div>Cód: MEC109</div>
+        <div>Ciências dos Materiais</div>
+    </div>
+    <div class="disciplina" data-id="termodinamica" style="grid-column: 4; grid-row: 5;">
+        <div>Cód: MEC110</div>
+        <div>Termodinâmica</div>
+    </div>
+    <div class="disciplina" data-id="eletronica" style="grid-column: 4; grid-row: 6;">
+        <div>Cód: MEC111</div>
+        <div>Eletrônica Básica</div>
+    </div>
+    <div class="disciplina" data-id="mecanica_solidos" style="grid-column: 4; grid-row: 7;">
+        <div>Cód: MEC112</div>
+        <div>Mecânica dos Sólidos</div>
+    </div>
+
+
+    <!-- Disciplinas do 5º Semestre -->
+    <div class="disciplina" data-id="cinematica" style="grid-column: 5; grid-row: 2;">
+        <div>Cód: MEC113</div>
+        <div>Cinemática e Dinâmica dos Mecanismos</div>
+    </div>
+    <div class="disciplina" data-id="ensaios" style="grid-column: 5; grid-row: 3;">
+        <div>Cód: MEC114</div>
+        <div>Ensaios Mecânicos de Materiais</div>
+    </div>
+    <div class="disciplina" data-id="materiais1" style="grid-column: 5; grid-row: 4;">
+        <div>Cód: MEC115</div>
+        <div>Materiais de Construção Mecânica I</div>
+    </div>
+    <div class="disciplina" data-id="fluidos1" style="grid-column: 5; grid-row: 5;">
+        <div>Cód: MEC116</div>
+        <div>Mecânica dos Fluidos I</div>
+    </div>
+    <div class="disciplina" data-id="solidos_aplicada" style="grid-column: 5; grid-row: 6;">
+        <div>Cód: MEC117</div>
+        <div>Mecânica dos Sólidos Aplicada</div>
+    </div>
+    <div class="disciplina" data-id="usinagem" style="grid-column: 5; grid-row: 7;">
+        <div>Cód: MEC118</div>
+        <div>Usinagem</div>
+    </div>
+
+
+    <!-- Disciplinas do 6º Semestre -->
+    <div class="disciplina" data-id="automacao" style="grid-column: 6; grid-row: 2;">
+        <div>Cód: MEC119</div>
+        <div>Automação Industrial</div>
+    </div>
+    <div class="disciplina" data-id="elementos1" style="grid-column: 6; grid-row: 3;">
+        <div>Cód: MEC120</div>
+        <div>Elementos de Máquinas I</div>
+    </div>
+    <div class="disciplina" data-id="seguranca" style="grid-column: 6; grid-row: 4;">
+        <div>Cód: MEC121</div>
+        <div>Engenharia de Segurança do Trabalho</div>
+    </div>
+    <div class="disciplina" data-id="materiais2" style="grid-column: 6; grid-row: 5;">
+        <div>Cód: MEC122</div>
+        <div>Materiais de Construção Mecânica II</div>
+    </div>
+    <div class="disciplina" data-id="fluidos2" style="grid-column: 6; grid-row: 6;">
+        <div>Cód: MEC123</div>
+        <div>Mecânica dos Fluidos II</div>
+    </div>
+    <div class="disciplina" data-id="calor1" style="grid-column: 6; grid-row: 7;">
+        <div>Cód: MEC124</div>
+        <div>Transferência de Calor I</div>
+    </div>
+
+
+    <!-- Disciplinas do 7º Semestre -->
+    <div class="disciplina" data-id="vibracoes" style="grid-column: 7; grid-row: 2;">
+        <div>Cód: MEC125</div>
+        <div>Vibrações Mecânicas</div>
+    </div>
+    <div class="disciplina" data-id="comandos" style="grid-column: 7; grid-row: 3;">
+        <div>Cód: MEC126</div>
+        <div>Comandos Hidráulicos e Pneumáticos</div>
+    </div>
+    <div class="disciplina" data-id="elementos2" style="grid-column: 7; grid-row: 4;">
+        <div>Cód: MEC127</div>
+        <div>Elementos de Máquinas II</div>
+    </div>
+    <div class="disciplina" data-id="fundicao" style="grid-column: 7; grid-row: 5;">
+        <div>Cód: MEC128</div>
+        <div>Fundição</div>
+    </div>
+    <div class="disciplina" data-id="maquinas_fluxo" style="grid-column: 7; grid-row: 6;">
+        <div>Cód: MEC129</div>
+        <div>Máquinas de Fluxo</div>
+    </div>
+    <div class="disciplina" data-id="soldagem" style="grid-column: 7; grid-row: 7;">
+        <div>Cód: MEC130</div>
+        <div>Soldagem</div>
+    </div>
+
+
+    <!-- Disciplinas do 8º Semestre -->
+    <div class="disciplina" data-id="conformacao" style="grid-column: 8; grid-row: 2;">
+        <div>Cód: MEC131</div>
+        <div>Conformação Mecânica</div>
+    </div>
+    <div class="disciplina" data-id="maquinas_termicas" style="grid-column: 8; grid-row: 3;">
+        <div>Cód: MEC132</div>
+        <div>Máquinas Térmicas</div>
+    </div>
+    <div class="disciplina" data-id="projetos_maquinas" style="grid-column: 8; grid-row: 4;">
+        <div>Cód: MEC133</div>
+        <div>Projetos de Máquinas</div>
+    </div>
+    <div class="disciplina" data-id="refrigeracao" style="grid-column: 8; grid-row: 5;">
+        <div>Cód: MEC134</div>
+        <div>Refrigeração e Ar-Condicionado</div>
+    </div>
+    <div class="disciplina" data-id="controle" style="grid-column: 8; grid-row: 6;">
+        <div>Cód: MEC135</div>
+        <div>Controle de Sistemas Lineares</div>
+    </div>
+    <div class="disciplina" data-id="gestao_qualidade" style="grid-column: 8; grid-row: 7;">
+        <div>Cód: MEC136</div>
+        <div>Gestão da Qualidade e da Produtividade</div>
+    </div>
+
+
+    <!-- Disciplinas do 9º Semestre -->
+    <div class="disciplina" data-id="manutencao" style="grid-column: 9; grid-row: 2;">
+        <div>Cód: MEC137</div>
+        <div>Manutenção Industrial</div>
+    </div>
+    <div class="disciplina" data-id="extensao1" style="grid-column: 9; grid-row: 3;">
+        <div>Cód: MEC138</div>
+        <div>Extensão Universitária I</div>
+    </div>
+    <div class="disciplina" data-id="energias_renovaveis" style="grid-column: 9; grid-row: 4;">
+        <div>Cód: MEC139</div>
+        <div>Sistemas de Energias Renováveis</div>
+    </div>
+    <div class="disciplina" data-id="optativa1" style="grid-column: 9; grid-row: 5;">
+        <div>Cód: OPT100</div>
+        <div>Optativa I</div>
+    </div>
+    <div class="disciplina" data-id="optativa2" style="grid-column: 9; grid-row: 6;">
+        <div>Cód: OPT101</div>
+        <div>Optativa II</div>
+    </div>
+
+
+    <!-- Disciplinas do 10º Semestre -->
+    <div class="disciplina" data-id="extensao2" style="grid-column: 10; grid-row: 2;">
+        <div>Cód: MEC140</div>
+        <div>Extensão Universitária II</div>
+    </div>
+    <div class="disciplina" data-id="tcc" style="grid-column: 10; grid-row: 3;">
+        <div>Cód: MEC141</div>
+        <div>TCC</div>
+    </div>
+    <div class="disciplina" data-id="estagio_obrigatorio" style="grid-column: 10; grid-row: 4;">
+        <div>Cód: MEC142</div>
+        <div>Estágio Curricular Obrigatório</div>
+    </div>
+    <div class="disciplina" data-id="estagio_nao_obrigatorio" style="grid-column: 10; grid-row: 5;">
+        <div>Cód: MEC143</div>
+        <div>Estágio Curricular Não Obrigatório</div>
+    </div>
+    <div class="disciplina" data-id="enade" style="grid-column: 10; grid-row: 6;">
+        <div>Cód: MEC144</div>
+        <div>ENADE</div>
+    </div>
+</div>
+<script>
+const preRequisitos = {
+    // 1º Semestre
+    'calculo1': [],
+    'desenho1': [],
+    'fisica1': [],
+    'praticas': [],
+    'matrizes': [],
+    'quimica': [],
+
+
+    // 2º Semestre
+    'programacao': [],
+    'calculo2': ['calculo1'],
+    'desenho2': ['desenho1'],
+    'estatica': ['fisica1', 'matrizes'],
+    'fisica_exp': [],
+    'probabilidade': [],
+
+
+    // 3º Semestre
+    'calculo3': ['calculo2'],
+    'dinamica': ['estatica', 'calculo2'],
+    'economia': [],
+    'fisica3': ['fisica1', 'fisica_exp'],
+    'gestao': [],
+    'metrologia': ['probabilidade', 'desenho2'],
+
+
+    // 4º Semestre
+    'eletrotecnica': ['fisica3'],
+    'calculo_numerico': ['calculo3'],
+    'ciencia_materiais': ['quimica', 'termodinamica'],
+    'termodinamica': ['fisica_exp', 'calculo3'],
+    'eletronica': ['fisica3'],
+    'mecanica_solidos': ['calculo2', 'estatica'],
+
+
+    // 5º Semestre
+    'cinematica': ['dinamica'],
+    'ensaios': ['ciencia_materiais', 'mecanica_solidos'],
+    'materiais1': ['ciencia_materiais'],
+    'fluidos1': ['termodinamica', 'dinamica'],
+    'solidos_aplicada': ['mecanica_solidos'],
+    'usinagem': ['metrologia',  'materiais1'], // Co-requisito: materiais1
+
+
+    // 6º Semestre
+    'automacao': ['eletronica', 'eletrotecnica'],
+    'elementos1': ['solidos_aplicada', 'desenho2'],
+    'seguranca': ['praticas', 'usinagem'],
+    'materiais2': ['materiais1'],
+    'fluidos2': ['fluidos1'],
+    'calor1': ['calculo_numerico', 'fluidos1'],
+
+
+    // 7º Semestre
+    'vibracoes': ['calculo3', 'cinematica'],
+    'comandos': ['fluidos2', 'automacao'],
+    'elementos2': ['elementos1'],
+    'fundicao': ['materiais2'],
+    'maquinas_fluxo': ['calculo_numerico', 'elementos1', 'fluidos2'],
+    'soldagem': ['materiais2'],
+    'calor2': ['calor1', 'fluidos2'],
+
+
+    // 8º Semestre
+    'conformacao': ['ensaios', 'materiais2'],
+    'maquinas_termicas': ['calculo_numerico', 'calor2'],
+    'projetos_maquinas': ['cinematica', 'elementos2'],
+    'refrigeracao': ['maquinas_fluxo', 'calor2'],
+    'controle': ['vibracoes'],
+    'gestao_qualidade': ['metrologia', 'usinagem'],
+
+
+    // 9º Semestre
+    'manutencao': ['vibracoes', 'elementos2'],
+    'extensao1': [],
+    'energias_renovaveis': ['quimica'],
+    'optativa1': [],
+    'optativa2': [],
+
+
+    // 10º Semestre
+    'extensao2': [],
+    'tcc': [],
+    'estagio_obrigatorio': [],
+    'estagio_nao_obrigatorio': [],
+    'enade': []
+};
+
+
+// Variáveis para controlar o estado de seleção
+let selecionada = null;
+let disciplinaClicada = null;
+
+
+// Referência à caixa de diálogo
+const dialog = document.getElementById('dialog');
+const btnMostrarPreRequisitos = document.getElementById('btn-mostrar-pre-requisitos');
+const btnMarcarConcluida = document.getElementById('btn-marcar-concluida');
+
+
+// Função para atualizar o progresso de conclusão das disciplinas
+function atualizarProgresso() {
+    const totalDisciplinas = document.querySelectorAll('.disciplina').length;
+    const disciplinasConcluidas = document.querySelectorAll('.disciplina.concluida').length;
+    const porcentagem = ((disciplinasConcluidas / totalDisciplinas) * 100).toFixed(2);
+
+
+    const progresso = document.querySelector('.progresso');
+    progresso.style.width = `${porcentagem}%`;  // Atualiza a barra de progresso
+
+
+    const progressoTexto = document.querySelector('.progresso-texto');
+    progressoTexto.textContent = `${porcentagem}% concluído`;  // Atualiza o texto com a porcentagem
+}
+
+
+// Função para alternar o estado de conclusão de uma disciplina
+function toggleConcluida(disciplina) {
+    const estaConcluida = disciplina.classList.contains('concluida');
+
+
+    // Alterna o estado de conclusão (marca ou desmarca como concluída)
+    disciplina.classList.toggle('concluida', !estaConcluida);
+    atualizarProgresso();  // Atualiza a barra de progresso
+
+
+    // Salva o estado no localStorage
+    const id = disciplina.dataset.id;
+    const concluidas = JSON.parse(localStorage.getItem('concluidas')) || [];
+    if (!estaConcluida) {
+        // Se não estava concluída, adiciona ao localStorage
+        if (!concluidas.includes(id)) {
+            concluidas.push(id);
+        }
+    } else {
+        // Se estava concluída, remove do localStorage
+        const index = concluidas.indexOf(id);
+        if (index !== -1) {
+            concluidas.splice(index, 1);
+        }
+    }
+    localStorage.setItem('concluidas', JSON.stringify(concluidas));
+}
+
+
+// Função para exibir a caixa de diálogo com as informações da disciplina
+function exibirDialog(event, disciplina) {
+    const container = document.querySelector('.container');
+    const rect = container.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;  // Calcula a posição X do clique
+    const offsetY = event.clientY - rect.top;   // Calcula a posição Y do clique
+
+
+// Define a posição da caixa de diálogo
+    dialog.style.top = `${offsetY}px`;
+    dialog.style.left = `${offsetX}px`;
+    dialog.style.display = 'block';
+
+
+    // Armazena a disciplina clicada
+    disciplinaClicada = disciplina;
+}
+
+
+// Função para fechar a caixa de diálogo
+function fecharDialog() {
+    dialog.style.display = 'none';
+    disciplinaClicada = null;
+}
+
+
+// Adiciona evento de clique nas disciplinas para abrir a caixa de diálogo
+document.querySelectorAll('.disciplina').forEach(disciplina => {
+    disciplina.addEventListener('click', (e) => {
+        e.stopPropagation();  // Impede que o clique se propague para outros elementos
+        exibirDialog(e, disciplina);  // Exibe a caixa de diálogo
+    });
+});
+
+
+// Função para exibir os pré-requisitos de uma disciplina
+btnMostrarPreRequisitos.addEventListener('click', () => {
+    if (disciplinaClicada) {
+        // Se uma disciplina foi clicada
+        if (selecionada === disciplinaClicada.dataset.id) {
+            limparDestaques();  // Limpa os destaques se clicar na mesma disciplina
+            selecionada = null;
+        } else {
+            limparDestaques();  // Limpa todos os destaques
+            selecionada = disciplinaClicada.dataset.id;
+            disciplinaClicada.classList.add('destaque-selecionada');  // Adiciona destaque na disciplina selecionada
+            destacarPreRequisitos(selecionada);  // Destaca os pré-requisitos
+        }
+        fecharDialog();  // Fecha a caixa de diálogo
+    }
+});
+
+
+// Função para marcar uma disciplina como concluída
+btnMarcarConcluida.addEventListener('click', () => {
+    if (disciplinaClicada) {
+        toggleConcluida(disciplinaClicada);  // Marca ou desmarca a disciplina
+        fecharDialog();  // Fecha a caixa de diálogo
+    }
+});
+
+
+// Fecha a caixa de diálogo ao clicar fora dela
+document.addEventListener('click', (e) => {
+    if (!dialog.contains(e.target)) {
+        fecharDialog();  // Fecha a caixa de diálogo
+    }
+});
+
+
+// Função para marcar/desmarcar todas as disciplinas de um semestre
+function marcarTodasDoSemestre(semestre) {
+    const disciplinas = document.querySelectorAll(`.disciplina[style*="grid-column: ${semestre};"]`);
+    const todasConcluidas = Array.from(disciplinas).every(disciplina => disciplina.classList.contains('concluida'));
+
+
+    disciplinas.forEach(disciplina => {
+        if (todasConcluidas) {
+            // Se todas as disciplinas estão concluídas, desmarca todas
+            if (disciplina.classList.contains('concluida')) {
+                toggleConcluida(disciplina);
+            }
+        } else {
+            // Marca as disciplinas que ainda não foram concluídas
+            if (!disciplina.classList.contains('concluida')) {
+                toggleConcluida(disciplina);
+            }
+        }
+    });
+}
+
+
+// Adiciona evento de clique nos cabeçalhos de semestre para marcar/desmarcar todas as disciplinas
+document.querySelectorAll('.semestre-header').forEach(header => {
+    header.addEventListener('click', () => {
+        const semestre = header.id.split('-')[1]; // Extrai o número do semestre
+        marcarTodasDoSemestre(semestre);  // Marca ou desmarca todas as disciplinas do semestre
+    });
+});
+
+
+// Função para carregar as disciplinas já marcadas como concluídas
+function carregarConcluidas() {
+    const concluidas = JSON.parse(localStorage.getItem('concluidas')) || [];
+    concluidas.forEach(id => {
+        const disciplina = document.querySelector(`[data-id="${id}"]`);
+        if (disciplina) {
+            disciplina.classList.add('concluida');
+        }
+    });
+}
+
+
+// Carregar disciplinas concluídas ao carregar a página
+window.addEventListener('load', carregarConcluidas);
+
+
+// Função para destacar pré-requisitos
+function destacarPreRequisitos(id, nivel = 0) {
+    // Obtém a lista de pré-requisitos diretos da disciplina usando seu ID.
+    // Se não houver pré-requisitos para a disciplina, retorna um array vazio.
+    const preDiretos = preRequisitos[id] || [];
+    
+    // Para cada pré-requisito encontrado, realiza as ações a seguir.
+    preDiretos.forEach(pre => {
+        // Seleciona o elemento da disciplina com o atributo 'data-id' igual ao pré-requisito atual.
+        const elemento = document.querySelector(`[data-id="${pre}"]`);
+        
+        // Se o elemento existir na página, aplica o destaque conforme o nível.
+        if (elemento) {
+            if (nivel === 0) {
+                // Se for o nível 0 (pré-requisito direto), adiciona a classe 'destaque-pre-requisito'.
+                elemento.classList.add('destaque-pre-requisito');
+            } else if (nivel === 1) {
+                // Se for o nível 1 (pré-pré-requisito), adiciona a classe 'destaque-pre-pre-requisito'.
+                elemento.classList.add('destaque-pre-pre-requisito');
+            }
+            // Chama recursivamente a função para destacar os pré-requisitos do pré-requisito atual.
+            // Aumenta o nível para ir para o próximo nível de pré-requisito.
+            destacarPreRequisitos(pre, nivel + 1);
+        }
+    });
+}
+
+
+// Função para limpar destaques
+function limparDestaques() {
+    // Seleciona todos os elementos com a classe 'disciplina'.
+    document.querySelectorAll('.disciplina').forEach(d => {
+        // Remove as classes de destaque aplicadas anteriormente.
+        d.classList.remove('destaque-pre-requisito');
+        d.classList.remove('destaque-pre-pre-requisito');
+        d.classList.remove('destaque-selecionada');
+    });
+}
+
+
+    </script>
+</body>
+</html>
